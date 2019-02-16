@@ -1,0 +1,34 @@
+This lends you an OpenGL context you may draw things on using WinAPI messaging.
+
+The protocol is in development, but for now it looks somehow like this:
+
+    if(draw_some_points_from_c){
+        HWND a = (HWND)5506184;           //    HWND is copied to clipboard on start
+        SendMessage(a, WM_USER, 'D', 0);  //    turn off the drawing so it wouldn't flicker while you add data.
+        SendMessage(a, WM_USER, 0, 0);    //    cleaning up the point list
+        SendMessage(a, WM_USER, 'X', 10); //    X 
+        SendMessage(a, WM_USER, 'Y', 10); //    Y
+        SendMessage(a, WM_USER, 'Z', 10); //    Z
+        SendMessage(a, WM_USER, 'R', 255);//    Red
+        SendMessage(a, WM_USER, 'G', 128);//    Green
+        SendMessage(a, WM_USER, 'B', 255);//    Blue
+        SendMessage(a, WM_USER, 1, 0);    //  adding a point,  incrementing a counter
+        SendMessage(a, WM_USER, 'X', 20);
+        SendMessage(a, WM_USER, 'Y', 10);
+        SendMessage(a, WM_USER, 'Z', 10);
+        SendMessage(a, WM_USER, 'R', 128);
+        SendMessage(a, WM_USER, 'G', 128);
+        SendMessage(a, WM_USER, 'B', 0);
+        SendMessage(a, WM_USER, 1, 0);
+        SendMessage(a, WM_USER, 'X', 10);
+        SendMessage(a, WM_USER, 'Y', 20);
+        SendMessage(a, WM_USER, 'Z', 10);
+        SendMessage(a, WM_USER, 'R', 0);
+        SendMessage(a, WM_USER, 'G', 128);
+        SendMessage(a, WM_USER, 'B', 255);
+        SendMessage(a, WM_USER, 1, 0);
+        SendMessage(a, WM_USER, 'C', 0);  // camera by 0 = (0,  0,  0),  1..n - by one of the points
+        SendMessage(a, WM_USER, 'P', 1);  // coordiante system by the same rules.
+        SendMessage(a, WM_USER, 'S', -1); // scaling by the power of 2 
+        SendMessage(a, WM_USER, 'D', 1);  // turning on the drawing
+    }
