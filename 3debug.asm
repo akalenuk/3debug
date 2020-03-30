@@ -18,23 +18,6 @@ includelib \masm32\lib\gdi32.lib
 includelib \masm32\lib\opengl32.lib
 includelib \masm32\lib\glu32.lib
 
-; --------------- Macros Section
-szText	MACRO Name, Text:VARARG
-		LOCAL	lbl
-		jmp		lbl
-Name	db		Text,0
-lbl:
-		ENDM
-
-m2m		MACRO M1, M2
-		push M2
-		pop M1
-		ENDM
-
-return	MACRO arg
-		mov eax,arg
-		ret
-		ENDM
 
 ; --------------- These constants are not defined in windows.inc
 PFD_MAIN_PLANE		equ	0
@@ -47,6 +30,7 @@ PFD_SUPPORT_OPENGL	equ	020h
 ; --------------- Data Section
 .data
 szDisplayName	db	"3Debuger", 0
+szClassName		db	"Win32SDI_Class", 0
 even
 PixFrm PIXELFORMATDESCRIPTOR <>
 
@@ -146,7 +130,8 @@ CenterForm  PROC wDim:DWORD, sDim:DWORD
 			shr wDim, 1
 			mov eax, wDim
 			sub sDim, eax
-			return sDim
+			mov eax, sDim
+			ret
 CenterForm  ENDP
 
 DoEvents	PROC
@@ -185,13 +170,13 @@ MainInit	PROC hInst:DWORD, hPrevInst:DWORD, CmdLine:DWORD, CmdShow:DWORD
 			LOCAL Wht:DWORD
 			LOCAL Wtx:DWORD
 			LOCAL Wty:DWORD
-			szText szClassName, "Win32SDI_Class"
 			mov wc.cbSize, sizeof WNDCLASSEX
 			mov wc.style, 0
 			mov wc.lpfnWndProc, offset MainLoop
 			mov wc.cbClsExtra, NULL
 			mov wc.cbWndExtra, NULL
-			m2m wc.hInstance, hInst
+			push hInst
+			pop wc.hInstance
 			mov wc.hbrBackground, COLOR_WINDOWTEXT + 1
 			mov wc.lpszMenuName, NULL
 			mov wc.lpszClassName, offset szClassName
@@ -234,7 +219,8 @@ MainLoop	PROC hWin:DWORD, uMsg:DWORD, wParam:DWORD, lParam:DWORD
 				.if wParam == 1000
 					invoke SendMessage, hWin, WM_SYSCOMMAND, SC_CLOSE,NULL
 				.endif
-				return 0
+				mov eax, 0
+				ret
 			.elseif uMsg == WM_CREATE
 				invoke GetDesktopWindow
 				mov dWnd, eax
@@ -278,12 +264,14 @@ MainLoop	PROC hWin:DWORD, uMsg:DWORD, wParam:DWORD, lParam:DWORD
 				invoke wglMakeCurrent, MainHDC, OpenDC
 				invoke GetClientRect, hWin, ADDR WINRect
 				invoke GlInit, WINRect.right, WINRect.bottom
-NoPixelFmt:		
-				return 0
+NoPixelFmt:
+				mov eax, 0
+				ret
 			.elseif uMsg == WM_SIZE
 				invoke GetClientRect, hWin, ADDR WINRect
 				invoke ResizeObject, WINRect.right, WINRect.bottom
-				return 0
+				mov eax, 0
+				ret
 
 			.elseif uMsg == WM_KEYDOWN
 				.if wParam == VK_ESCAPE
@@ -638,10 +626,12 @@ NoPixelFmt:
 NoGlDC: 
 				invoke ReleaseDC, hWin, MainHDC
 				invoke DestroyWindow, hWin
-				return 0
+				mov eax, 0
+				ret
 			.elseif uMsg == WM_DESTROY
 				invoke PostQuitMessage, NULL
-				return 0 
+				mov eax, 0
+				ret
 			.endif
 			invoke DefWindowProc, hWin, uMsg, wParam, lParam
 			ret
