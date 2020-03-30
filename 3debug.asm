@@ -164,8 +164,8 @@ StartLoop:		; Check for waiting messages
 NoMsg:			; No pending messages: draw the scene
 			invoke DrawScene
 			jmp StartLoop
-ExitLoop:   
-		mov eax, msg.wParam
+ExitLoop:
+			mov eax, msg.wParam
 			ret
 DoEvents	ENDP
 
@@ -383,7 +383,7 @@ NoPixelFmt:
 					mov ecx, lParam
 					mov eax, CTable[ecx*4]
 					mov B[ebx*4], eax
-				.elseif wParam == 'F'	
+				.elseif wParam == 'F'
 					mov ebx, PointCount
 					mov eax, lParam
 					mov Flags[ebx*4], al
@@ -669,7 +669,7 @@ DrawScene   PROC
 				jmp Skip
 			.endif
 			invoke glClear, GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT
-			invoke glPushMatrix			
+			invoke glPushMatrix
 			invoke glLoadIdentity
 			invoke glTranslatef, scX, scY, scZ
 			invoke glRotatef, anX, Value1Flt, Value0Flt, Value0Flt
@@ -688,7 +688,7 @@ DrawScene   PROC
 				invoke glVertex3i, 0, 0, 0
 				invoke glVertex3i, 0, 0, 32
 			invoke glEnd
-											
+
 			invoke glPointSize, Value5Flt
 			.if PointCount > 0
 				mov ecx, PointCount
