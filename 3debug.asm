@@ -85,7 +85,6 @@ CTableF dd 0.941176470588235,0.945098039215686,0.949019607843137,0.9529411764705
 Xflag		db	0
 Yflag		db	0
 Zflag		db	0
-Draw_flag	db	1
 
 coma		db	',',0
 
@@ -110,9 +109,10 @@ addre	dd	?
 hEdit	dd	?
 sHWND	db	16	dup(?)
 
-; --------------- Procedures Declarations
-			.code
 
+.code
+
+; --------------- Procedures Declarations
 MainInit PROTO :DWORD, :DWORD, :DWORD, :DWORD
 MainLoop PROTO :DWORD, :DWORD, :DWORD, :DWORD
 TopXY PROTO :DWORD, :DWORD
@@ -124,341 +124,248 @@ SetLightSource PROTO :DWORD, :DWORD, :DWORD
 RotateObject PROTO :DWORD, :DWORD, :DWORD, :DWORD
 DeleteSpheres PROTO
 
-; --------------- Procedures Section
-CenterForm  PROC wDim:DWORD, sDim:DWORD
-			shr sDim, 1
-			shr wDim, 1
-			mov eax, wDim
-			sub sDim, eax
-			mov eax, sDim
-			ret
-CenterForm  ENDP
 
-DoEvents	PROC
-			LOCAL msg:MSG
-StartLoop:		; Check for waiting messages
-			invoke PeekMessage, ADDR msg, 0, 0, 0, PM_NOREMOVE
-			or eax, eax
-			jz NoMsg
-			invoke GetMessage, ADDR msg, NULL, 0, 0
-			or eax, eax
-			jz ExitLoop
-			invoke TranslateMessage, ADDR msg
-			invoke DispatchMessage, ADDR msg
-			jmp StartLoop
-NoMsg:			; No pending messages: draw the scene
-			invoke DrawScene
-			jmp StartLoop
-ExitLoop:
-			mov eax, msg.wParam
-			ret
-DoEvents	ENDP
-
-; --------------- Program start
 start:
-			invoke GetModuleHandle, NULL
-			mov hInstance, eax
-			invoke GetCommandLine
-			mov CommandLine, eax
-			invoke MainInit, hInstance, NULL, CommandLine, SW_SHOWDEFAULT
-			invoke ExitProcess, eax
+	invoke GetModuleHandle, NULL
+	mov hInstance, eax
+	invoke GetCommandLine
+	mov CommandLine, eax
+	invoke MainInit, hInstance, NULL, CommandLine, SW_SHOWDEFAULT
+	invoke ExitProcess, eax
 
 ; --------------- Program main inits
-MainInit	PROC hInst:DWORD, hPrevInst:DWORD, CmdLine:DWORD, CmdShow:DWORD
-			LOCAL wc:WNDCLASSEX
-			mov wc.cbSize, sizeof WNDCLASSEX
-			mov wc.style, 0
-			mov wc.lpfnWndProc, offset MainLoop
-			mov wc.cbClsExtra, NULL
-			mov wc.cbWndExtra, NULL
-			push hInst
-			pop wc.hInstance
-			mov wc.hbrBackground, COLOR_WINDOWTEXT + 1
-			mov wc.lpszMenuName, NULL
-			mov wc.lpszClassName, offset szClassName
-			invoke LoadIcon, hInst, 500	
-			mov wc.hIcon, eax
-			invoke LoadCursor, NULL, IDC_ARROW
-			mov wc.hCursor, eax
-			mov wc.hIconSm, 0
-			invoke RegisterClassEx, ADDR wc
-			invoke CreateWindowEx, 0, ADDR szClassName,
-				ADDR szDisplayName,
-				WS_OVERLAPPEDWINDOW or WS_CLIPSIBLINGS or WS_CLIPCHILDREN,
-				CW_USEDEFAULT, CW_USEDEFAULT, 800, 600,
-				NULL, NULL,
-				hInst, NULL
-			mov hWnd, eax
-			invoke LoadMenu, hInst, 600
-			invoke SetMenu, hWnd, eax
-			invoke ShowWindow, hWnd, SW_SHOWNORMAL
-			invoke UpdateWindow, hWnd
-			call DoEvents
-			ret
-MainInit	ENDP
+	MainInit PROC hInst:DWORD, hPrevInst:DWORD, CmdLine:DWORD, CmdShow:DWORD
+		LOCAL wc:WNDCLASSEX
+		LOCAL msg:MSG
+		mov wc.cbSize, sizeof WNDCLASSEX
+		mov wc.style, 0
+		mov wc.lpfnWndProc, offset MainLoop
+		mov wc.cbClsExtra, NULL
+		mov wc.cbWndExtra, NULL
+		push hInst
+		pop wc.hInstance
+		mov wc.hbrBackground, COLOR_WINDOWTEXT + 1
+		mov wc.lpszMenuName, NULL
+		mov wc.lpszClassName, offset szClassName
+		invoke LoadIcon, hInst, 500	
+		mov wc.hIcon, eax
+		invoke LoadCursor, NULL, IDC_ARROW
+		mov wc.hCursor, eax
+		mov wc.hIconSm, 0
+		invoke RegisterClassEx, ADDR wc
+		invoke CreateWindowEx, 0, ADDR szClassName,
+			ADDR szDisplayName,
+			WS_OVERLAPPEDWINDOW or WS_CLIPSIBLINGS or WS_CLIPCHILDREN,
+			CW_USEDEFAULT, CW_USEDEFAULT, 800, 600,
+			NULL, NULL,
+			hInst, NULL
+		mov hWnd, eax
+		invoke LoadMenu, hInst, 600
+		invoke SetMenu, hWnd, eax
+		invoke ShowWindow, hWnd, SW_SHOWNORMAL
+		invoke UpdateWindow, hWnd
+
+; --------------- Event loop
+StartLoop:
+		invoke PeekMessage, ADDR msg, 0, 0, 0, PM_NOREMOVE
+		or eax, eax
+		jz NoMsg
+		invoke GetMessage, ADDR msg, NULL, 0, 0
+		or eax, eax
+		jz ExitLoop
+		invoke TranslateMessage, ADDR msg
+		invoke DispatchMessage, ADDR msg
+		jmp StartLoop
+NoMsg: ; No pending messages: draw the scene
+		invoke DrawScene
+		jmp StartLoop
+ExitLoop:
+		mov eax, msg.wParam
+		ret
+	MainInit ENDP
 
 ; --------------- Program main loop
-MainLoop	PROC hWin:DWORD, uMsg:DWORD, wParam:DWORD, lParam:DWORD
-			LOCAL WINRect:RECT
-			LOCAL rect:RECT
-			LOCAL dWnd:HWND
-			LOCAL PixFormat:DWORD
-			.if uMsg == WM_COMMAND
-				.if wParam == 1000
-					invoke SendMessage, hWin, WM_SYSCOMMAND, SC_CLOSE,NULL
-				.endif
-				mov eax, 0
-				ret
-			.elseif uMsg == WM_CREATE
-				invoke GetDC, hWin
-				mov MainHDC, eax
-				mov ax, SIZEOF PixFrm
-				mov PixFrm.nSize, ax
-				mov PixFrm.nVersion, 1
-				mov PixFrm.dwFlags, PFD_DRAW_TO_WINDOW or PFD_SUPPORT_OPENGL or PFD_DOUBLEBUFFER
-				mov PixFrm.dwLayerMask, PFD_MAIN_PLANE
-				mov PixFrm.iPixelType, PFD_TYPE_RGBA
-				mov PixFrm.cColorBits, 8
-				mov PixFrm.cDepthBits, 16
-				mov PixFrm.cAccumBits, 0
-				mov PixFrm.cStencilBits, 0
-				invoke ChoosePixelFormat, MainHDC, ADDR PixFrm
-				mov PixFormat, eax
-				invoke SetPixelFormat, MainHDC, PixFormat, ADDR PixFrm
-				or eax, eax
-				jz NoPixelFmt
-				invoke wglCreateContext, MainHDC
-				mov OpenDC, eax
-				invoke wglMakeCurrent, MainHDC, OpenDC
-				invoke GetClientRect, hWin, ADDR WINRect
-				invoke GlInit, WINRect.right, WINRect.bottom
-NoPixelFmt:
-				mov eax, 0
-				ret
-			.elseif uMsg == WM_SIZE
-				invoke GetClientRect, hWin, ADDR WINRect
-				invoke ResizeObject, WINRect.right, WINRect.bottom
-				mov eax, 0
-				ret
-
-			.elseif uMsg == WM_KEYDOWN
-				.if wParam == VK_ESCAPE
-					invoke SendMessage, hWnd, WM_CLOSE,0,0
-				.elseif wParam == VK_W
-					FINIT
-					FLD scZ
-					FMUL Value095Flt
-					FST scZ
-				.elseif wParam == VK_S
-					FINIT
-					FLD scZ
-					FDIV Value095Flt
-					FST scZ
-				.elseif wParam == VK_F
-					FINIT
-					FLD scX
-					FADD Value5Flt
-					FST scX
-				.elseif wParam == VK_H
-					FINIT
-					FLD scX
-					FSUB Value5Flt
-					FST scX
-				.elseif wParam == VK_T
-					FINIT
-					FLD scY
-					FSUB Value5Flt
-					FST scY
-				.elseif wParam == VK_G
-					FINIT
-					FLD scY
-					FADD Value5Flt
-					FST scY
-				.elseif wParam == VK_LEFT
-					FINIT
-					FLD anY
-					FADD Value1Flt
-					FST anY
-				.elseif wParam == VK_RIGHT
-					FINIT
-					FLD anY
-					FSUB Value1Flt
-					FST anY
-				.elseif wParam == VK_UP
-					FINIT
-					FLD anX
-					FADD Value1Flt
-					FST anX
-				.elseif wParam == VK_DOWN
-					FINIT
-					FLD anX
-					FSUB Value1Flt
-					FST anX
-				.elseif wParam == VK_D
-					FINIT
-					FLD anZ
-					FSUB Value1Flt
-					FST anZ
-				.elseif wParam == VK_A
-					FINIT
-					FLD anZ
-					FADD Value1Flt
-					FST anZ
-				.elseif wParam == VK_X
-					xor Xflag, 1
-				.elseif wParam == VK_Y
-					xor Yflag, 1
-				.elseif wParam == VK_Z
-					xor Zflag, 1
-				.endif
-			.elseif uMsg == WM_MOUSEMOVE
-				; TBD
-			.elseif uMsg == WM_CLOSE
-				mov eax, OpenDC
-				or eax, eax
-				jz NoGlDC
-				; Delete our objects
-				invoke wglDeleteContext, OpenDC
-NoGlDC: 
-				invoke ReleaseDC, hWin, MainHDC
-				invoke DestroyWindow, hWin
-				mov eax, 0
-				ret
-			.elseif uMsg == WM_DESTROY
-				invoke PostQuitMessage, NULL
-				mov eax, 0
-				ret
+	MainLoop PROC hWin:DWORD, uMsg:DWORD, wParam:DWORD, lParam:DWORD
+		LOCAL WINRect:RECT
+		LOCAL rect:RECT
+		LOCAL dWnd:HWND
+		LOCAL PixFormat:DWORD
+		.if uMsg == WM_COMMAND
+			.if wParam == 1000
+				invoke SendMessage, hWin, WM_SYSCOMMAND, SC_CLOSE,NULL
 			.endif
-			invoke DefWindowProc, hWin, uMsg, wParam, lParam
+			mov eax, 0
 			ret
-MainLoop	ENDP
+		.elseif uMsg == WM_CREATE
+			invoke GetDC, hWin
+			mov MainHDC, eax
+			mov ax, SIZEOF PixFrm
+			mov PixFrm.nSize, ax
+			mov PixFrm.nVersion, 1
+			mov PixFrm.dwFlags, PFD_DRAW_TO_WINDOW or PFD_SUPPORT_OPENGL or PFD_DOUBLEBUFFER
+			mov PixFrm.dwLayerMask, PFD_MAIN_PLANE
+			mov PixFrm.iPixelType, PFD_TYPE_RGBA
+			mov PixFrm.cColorBits, 8
+			mov PixFrm.cDepthBits, 16
+			mov PixFrm.cAccumBits, 0
+			mov PixFrm.cStencilBits, 0
+			invoke ChoosePixelFormat, MainHDC, ADDR PixFrm
+			mov PixFormat, eax
+			invoke SetPixelFormat, MainHDC, PixFormat, ADDR PixFrm
+			or eax, eax
+			jz NoPixelFmt
+			invoke wglCreateContext, MainHDC
+			mov OpenDC, eax
+			invoke wglMakeCurrent, MainHDC, OpenDC
+			invoke GetClientRect, hWin, ADDR WINRect
+			invoke GlInit, WINRect.right, WINRect.bottom
+NoPixelFmt:
+			mov eax, 0
+			ret
+		.elseif uMsg == WM_SIZE
+			invoke GetClientRect, hWin, ADDR WINRect
+			invoke ResizeObject, WINRect.right, WINRect.bottom
+			mov eax, 0
+			ret
+
+		.elseif uMsg == WM_KEYDOWN
+			.if wParam == VK_ESCAPE
+				invoke SendMessage, hWnd, WM_CLOSE,0,0
+			.elseif wParam == VK_W
+				FINIT
+				FLD scZ
+				FMUL Value095Flt
+				FST scZ
+			.elseif wParam == VK_S
+				FINIT
+				FLD scZ
+				FDIV Value095Flt
+				FST scZ
+			.elseif wParam == VK_F
+				FINIT
+				FLD scX
+				FADD Value5Flt
+				FST scX
+			.elseif wParam == VK_H
+				FINIT
+				FLD scX
+				FSUB Value5Flt
+				FST scX
+			.elseif wParam == VK_T
+				FINIT
+				FLD scY
+				FSUB Value5Flt
+				FST scY
+			.elseif wParam == VK_G
+				FINIT
+				FLD scY
+				FADD Value5Flt
+				FST scY
+			.elseif wParam == VK_LEFT
+				FINIT
+				FLD anY
+				FADD Value1Flt
+				FST anY
+			.elseif wParam == VK_RIGHT
+				FINIT
+				FLD anY
+				FSUB Value1Flt
+				FST anY
+			.elseif wParam == VK_UP
+				FINIT
+				FLD anX
+				FADD Value1Flt
+				FST anX
+			.elseif wParam == VK_DOWN
+				FINIT
+				FLD anX
+				FSUB Value1Flt
+				FST anX
+			.elseif wParam == VK_D
+				FINIT
+				FLD anZ
+				FSUB Value1Flt
+				FST anZ
+			.elseif wParam == VK_A
+				FINIT
+				FLD anZ
+				FADD Value1Flt
+				FST anZ
+			.elseif wParam == VK_X
+				xor Xflag, 1
+			.elseif wParam == VK_Y
+				xor Yflag, 1
+			.elseif wParam == VK_Z
+				xor Zflag, 1
+			.endif
+		.elseif uMsg == WM_MOUSEMOVE
+			; TBD
+		.elseif uMsg == WM_CLOSE
+			mov eax, OpenDC
+			or eax, eax
+			jz NoGlDC
+			; Delete our objects
+			invoke wglDeleteContext, OpenDC
+NoGlDC: 
+			invoke ReleaseDC, hWin, MainHDC
+			invoke DestroyWindow, hWin
+			mov eax, 0
+			ret
+		.elseif uMsg == WM_DESTROY
+			invoke PostQuitMessage, NULL
+			mov eax, 0
+			ret
+		.endif
+		invoke DefWindowProc, hWin, uMsg, wParam, lParam
+		ret
+	MainLoop ENDP
 
 ; ------------------------------
 ; OpenGl related stuff
 ; ------------------------------
 
 ; --------------- Init the scene
-GlInit	  PROC ParentW:DWORD, ParentH:DWORD
-			; Set global flags
-			invoke glClearColor, Value1Flt, Value1Flt, Value1Flt, Value1Flt
-			invoke glEnable, GL_DEPTH_TEST
-			invoke glEnable, GL_LIGHTING
-			invoke glEnable, GL_CULL_FACE		; Don't render back faces
-			invoke glShadeModel, GL_SMOOTH
-			invoke glEnable, GL_NORMALIZE
-			ret
-GlInit	  ENDP
+	GlInit	PROC ParentW:DWORD, ParentH:DWORD
+		; Set global flags
+		invoke glClearColor, Value1Flt, Value1Flt, Value1Flt, Value1Flt
+		invoke glEnable, GL_DEPTH_TEST
+		invoke glEnable, GL_LIGHTING
+		invoke glEnable, GL_CULL_FACE		; Don't render back faces
+		invoke glShadeModel, GL_SMOOTH
+		invoke glEnable, GL_NORMALIZE
+		ret
+	GlInit ENDP
 
 ; --------------- Display the scene
-DrawScene   PROC
-			.if Draw_flag==0
-				jmp Skip
-			.endif
-			invoke glClear, GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT
-			invoke glPushMatrix
-			invoke glLoadIdentity
-			invoke glTranslatef, scX, scY, scZ
-			invoke glRotatef, anX, Value1Flt, Value0Flt, Value0Flt
-			invoke glRotatef, anY, Value0Flt, Value1Flt, Value0Flt
-			invoke glRotatef, anZ, Value0Flt, Value0Flt, Value1Flt
+	DrawScene PROC
+		invoke glClear, GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT
+		invoke glPushMatrix
+		invoke glLoadIdentity
+		invoke glTranslatef, scX, scY, scZ
+		invoke glRotatef, anX, Value1Flt, Value0Flt, Value0Flt
+		invoke glRotatef, anY, Value0Flt, Value1Flt, Value0Flt
+		invoke glRotatef, anZ, Value0Flt, Value0Flt, Value1Flt
 
-			invoke glPointSize, Value1Flt
-			invoke glBegin, GL_LINES
-				invoke glColor3f, Value1Flt, Value0Flt, Value0Flt
-				invoke glVertex3i, 0, 0, 0
-				invoke glVertex3i, 32, 0, 0
-				invoke glColor3f, Value0Flt, Value1Flt, Value0Flt
-				invoke glVertex3i, 0, 0, 0
-				invoke glVertex3i, 0, 32, 0
-				invoke glColor3f, Value0Flt, Value0Flt, Value1Flt
-				invoke glVertex3i, 0, 0, 0
-				invoke glVertex3i, 0, 0, 32
-			invoke glEnd
+		invoke glPointSize, Value1Flt
+		invoke glBegin, GL_LINES
+			invoke glColor3f, Value1Flt, Value0Flt, Value0Flt
+			invoke glVertex3i, 0, 0, 0
+			invoke glVertex3i, 32, 0, 0
+			invoke glColor3f, Value0Flt, Value1Flt, Value0Flt
+			invoke glVertex3i, 0, 0, 0
+			invoke glVertex3i, 0, 32, 0
+			invoke glColor3f, Value0Flt, Value0Flt, Value1Flt
+			invoke glVertex3i, 0, 0, 0
+			invoke glVertex3i, 0, 0, 32
+		invoke glEnd
 
-			invoke glPointSize, Value5Flt
-			.if PointCount > 0
-				mov ecx, PointCount
-				Again:
-				dec ecx
-
-				push ecx
-				invoke glBegin, GL_POINTS
-					pop ecx
-					push ecx
-					invoke glColor3f, R[ecx*4], G[ecx*4], B[ecx*4]
-					pop ecx
-					push ecx
-					invoke glVertex3i, X[ecx*4], Y[ecx*4], Z[ecx*4]
-					pop ecx
-					push ecx
-				invoke glEnd
-				pop ecx
-
-				.if Xflag==1
-					push ecx
-					invoke glBegin, GL_LINES
-						pop ecx
-						push ecx
-						invoke glColor3f, R[ecx*4], G[ecx*4], B[ecx*4]
-						pop ecx
-						push ecx
-						invoke glVertex3i, X[ecx*4], Y[ecx*4], Z[ecx*4]
-						pop ecx
-						push ecx
-						invoke glVertex3i, 0, Y[ecx*4], Z[ecx*4]
-						pop ecx
-						push ecx
-					invoke glEnd
-					pop ecx
-				.endif
-
-				.if Yflag==1
-					push ecx
-					invoke glBegin, GL_LINES
-						pop ecx
-						push ecx
-						invoke glColor3f, R[ecx*4], G[ecx*4], B[ecx*4]
-						pop ecx
-						push ecx
-						invoke glVertex3i, X[ecx*4], Y[ecx*4], Z[ecx*4]
-						pop ecx
-						push ecx
-						invoke glVertex3i, X[ecx*4], 0, Z[ecx*4]
-						pop ecx
-						push ecx
-					invoke glEnd
-					pop ecx
-				.endif
-
-				.if Zflag == 1
-					push ecx
-					invoke glBegin, GL_LINES
-						pop ecx
-						push ecx
-						invoke glColor3f, R[ecx*4], G[ecx*4], B[ecx*4]
-						pop ecx
-						push ecx
-						invoke glVertex3i, X[ecx*4], Y[ecx*4], Z[ecx*4]
-						pop ecx
-						push ecx
-						invoke glVertex3i, X[ecx*4], Y[ecx*4], 0
-						pop ecx
-						push ecx
-					invoke glEnd
-					pop ecx
-				.endif
-
-				cmp ecx,0
-				jg Again
-			.endif
 		invoke glPopMatrix
 		invoke SwapBuffers,MainHDC
-		Skip:
 		ret
-DrawScene ENDP
+	DrawScene ENDP
 
 ; --------------- Resize the scene
-ResizeObject PROC ParentW:DWORD,ParentH:DWORD
+	ResizeObject PROC ParentW:DWORD,ParentH:DWORD
 		invoke glViewport, 0, 0, ParentW,ParentH
 		invoke glMatrixMode, GL_PROJECTION
 		invoke glLoadIdentity
@@ -466,8 +373,6 @@ ResizeObject PROC ParentW:DWORD,ParentH:DWORD
 		invoke glMatrixMode, GL_MODELVIEW
 		invoke glLoadIdentity
 		ret
-ResizeObject ENDP
+	ResizeObject ENDP
 
-
-; --------------- Program end
 end start
