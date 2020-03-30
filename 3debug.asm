@@ -166,10 +166,6 @@ start:
 ; --------------- Program main inits
 MainInit	PROC hInst:DWORD, hPrevInst:DWORD, CmdLine:DWORD, CmdShow:DWORD
 			LOCAL wc:WNDCLASSEX
-			LOCAL Wwd:DWORD
-			LOCAL Wht:DWORD
-			LOCAL Wtx:DWORD
-			LOCAL Wty:DWORD
 			mov wc.cbSize, sizeof WNDCLASSEX
 			mov wc.style, 0
 			mov wc.lpfnWndProc, offset MainLoop
@@ -186,18 +182,10 @@ MainInit	PROC hInst:DWORD, hPrevInst:DWORD, CmdLine:DWORD, CmdShow:DWORD
 			mov wc.hCursor, eax
 			mov wc.hIconSm, 0
 			invoke RegisterClassEx, ADDR wc
-			mov Wwd, 206
-			mov Wht, 220
-			invoke GetSystemMetrics, SM_CXSCREEN
-			invoke CenterForm, Wwd, eax
-			mov Wtx, eax
-			invoke GetSystemMetrics, SM_CYSCREEN
-			invoke CenterForm, Wht, eax
-			mov Wty, eax
 			invoke CreateWindowEx, 0, ADDR szClassName,
 				ADDR szDisplayName,
 				WS_OVERLAPPEDWINDOW or WS_CLIPSIBLINGS or WS_CLIPCHILDREN,
-				Wtx, Wty, Wwd, Wht,
+				CW_USEDEFAULT, CW_USEDEFAULT, 800, 600,
 				NULL, NULL,
 				hInst, NULL
 			mov hWnd, eax
@@ -222,26 +210,6 @@ MainLoop	PROC hWin:DWORD, uMsg:DWORD, wParam:DWORD, lParam:DWORD
 				mov eax, 0
 				ret
 			.elseif uMsg == WM_CREATE
-				invoke GetDesktopWindow
-				mov dWnd, eax
-				invoke GetWindowRect, dWnd, ADDR rect
-				mov eax, rect.right
-				sub eax, 224
-				invoke SetWindowPos, hWin, HWND_TOPMOST, eax, 300, 0, 0, SWP_NOSIZE
-				invoke dwtoa, hWin, ADDR sHWND
-				invoke SetWindowText, hWin, ADDR sHWND
-				invoke dwtoa, hWin, ADDR buffer
-				invoke OpenClipboard, 0
-				invoke EmptyClipboard
-				invoke GlobalAlloc, GMEM_MOVEABLE or GMEM_DDESHARE, 32
-				mov hand, eax
-				invoke GlobalLock, hand
-				mov addre, eax
-				invoke lstrcpy, addre, ADDR buffer
-				invoke GlobalUnlock, hand
-				invoke SetClipboardData, CF_TEXT, hand
-				invoke CloseClipboard
-
 				invoke GetDC, hWin
 				mov MainHDC, eax
 				mov ax, SIZEOF PixFrm
