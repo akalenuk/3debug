@@ -60,7 +60,8 @@ scX				dd	0.0
 scY				dd	0.0
 
 .data?
-buffer	db	256		dup(?)
+buffer			db	256		dup(?)
+Path			db	4096	dup(?)
 
 .code
 ; --------------- Procedures Declarations
@@ -88,6 +89,22 @@ start:
 	MainInit PROC hInst:DWORD, hPrevInst:DWORD, CmdLine:DWORD, CmdShow:DWORD
 		LOCAL wc:WNDCLASSEX
 		LOCAL msg:MSG
+
+		; Argument
+		mov edx, CommandLine
+		mov al, [edx]
+		.while al > 20h
+			inc edx
+			mov al, [edx]
+		.endw
+		.if al == 20h
+			invoke lstrcpy, ADDR Path, edx
+		.elseif
+			mov Path[0], '.'
+			mov Path[1], 0
+		.endif
+		; invoke MessageBox, 0, ADDR Path, ADDR szDisplayName, MB_OK
+
 		mov wc.cbSize, sizeof WNDCLASSEX
 		mov wc.style, 0
 		mov wc.lpfnWndProc, offset MainLoop
