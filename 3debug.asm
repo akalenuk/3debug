@@ -5,6 +5,7 @@ option	casemap:none
 include \masm32\include\windows.inc
 include \masm32\include\user32.inc
 include \masm32\include\kernel32.inc
+include \masm32\include\shell32.inc
 include \masm32\include\masm32.inc
 include \masm32\include\gdi32.inc
 include \masm32\include\opengl32.inc
@@ -12,8 +13,8 @@ include \masm32\include\glu32.inc
 
 includelib \masm32\lib\user32.lib
 includelib \masm32\lib\kernel32.lib
+includelib \masm32\lib\shell32.lib
 includelib \masm32\lib\masm32.lib
-includelib \masm32\lib\gdi32.lib
 includelib \masm32\lib\gdi32.lib
 includelib \masm32\lib\opengl32.lib
 includelib \masm32\lib\glu32.lib
@@ -31,6 +32,8 @@ PFD_SUPPORT_OPENGL	equ	020h
 .data
 szDisplayName	db	"3Debuger", 0
 szClassName		db	"Win32SDI_Class", 0
+szDefaultPath	db	".", 0
+
 even
 PixFrm PIXELFORMATDESCRIPTOR <>
 
@@ -87,8 +90,12 @@ start:
 
 ; --------------- Program main inits
 	MainInit PROC hInst:DWORD, hPrevInst:DWORD, CmdLine:DWORD, CmdShow:DWORD
-		LOCAL wc:WNDCLASSEX
-		LOCAL msg:MSG
+		LOCAL wc : WNDCLASSEX
+		LOCAL msg : MSG
+		LOCAL number_of_arguments: DWORD
+		LOCAL array_of_arguments: DWORD
+		LOCAL find_data : WIN32_FIND_DATA
+		LOCAL find_handler : HANDLE
 
 		; Argument
 		mov edx, CommandLine
@@ -97,13 +104,26 @@ start:
 			inc edx
 			mov al, [edx]
 		.endw
-		.if al == 20h
-			invoke lstrcpy, ADDR Path, edx
-		.elseif
+		invoke lstrcpy, ADDR Path, edx
+		.if Path[0] == 0
+			mov Path[0], '.'
+			mov Path[1], 0
+		.elseif Path[1] == 0
 			mov Path[0], '.'
 			mov Path[1], 0
 		.endif
-		; invoke MessageBox, 0, ADDR Path, ADDR szDisplayName, MB_OK
+
+		invoke MessageBox, 0, ADDR Path, ADDR szDisplayName, MB_OK
+
+		; File list
+;		invoke FindFirstFile, ADDR Path, ADDR find_data
+;		.if (eax != 0)
+;			mov find_handler, eax
+;			.repeat
+;				invoke MessageBox, 0, ADDR find_data.cFileName, ADDR szDisplayName, MB_OK
+;				invoke FindNextFile, find_handler, ADDR find_data
+;			.until (eax == 0)
+;		.endif
 
 		mov wc.cbSize, sizeof WNDCLASSEX
 		mov wc.style, 0
